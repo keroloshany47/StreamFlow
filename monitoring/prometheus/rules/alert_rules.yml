@@ -1,0 +1,67 @@
+groups:
+  - name: Kafka Alerts
+    rules:
+      - alert: KafkaHighRequestLatency
+        expr: kafka_request_latency_ms > 100
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Request Latency in Kafka"
+          description: "Request latency is above 100ms for more than 1 minute."
+
+      - alert: KafkaBrokerDown
+        expr: up{job="kafka-brokers"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kafka Broker Down"
+          description: "Kafka broker {{ $labels.instance }} has been down for more than 1 minute."
+
+      - alert: KafkaControllerDown
+        expr: up{job="kafka-controllers"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kafka Controller Down"
+          description: "Kafka controller {{ $labels.instance }} has been down for more than 1 minute."
+
+      - alert: KafkaUnderReplicatedPartitions
+        expr: kafka_server_replicamanager_underreplicatedpartitions > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Kafka Under-Replicated Partitions"
+          description: "Broker {{ $labels.instance }} has {{ $value }} under-replicated partitions."
+
+      - alert: KafkaConsumerLag
+        expr: kafka_consumergroup_lag > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Kafka Consumer Lag"
+          description: "Consumer group {{ $labels.consumergroup }} lag is {{ $value }} on topic {{ $labels.topic }}."
+
+  - name: Elasticsearch Alerts
+    rules:
+      - alert: ElasticsearchClusterRed
+        expr: elasticsearch_cluster_health_status{color="red"} == 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Elasticsearch cluster is RED"
+          description: "Elasticsearch cluster health is RED — data loss possible."
+
+      - alert: ElasticsearchHighJVMHeap
+        expr: elasticsearch_jvm_memory_used_bytes / elasticsearch_jvm_memory_max_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Elasticsearch JVM heap > 85%"
+          description: "Instance {{ $labels.instance }} JVM heap usage is critically high."

@@ -1,0 +1,116 @@
+---
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+
+rules:
+  # Broker general
+  - pattern: kafka.server<type=(.+), name=(.+), clientId=(.+), topic=(.+), partition=(.*)><>Value
+    name: kafka_server_$1_$2
+    type: GAUGE
+    labels:
+      clientId: "$3"
+      topic: "$4"
+      partition: "$5"
+
+  - pattern: kafka.server<type=(.+), name=(.+), clientId=(.+), brokerHost=(.+), brokerPort=(.+)><>Value
+    name: kafka_server_$1_$2
+    type: GAUGE
+    labels:
+      clientId: "$3"
+      broker: "$4:$5"
+
+  - pattern: kafka.server<type=(.+), name=(.+)><>(\w+)
+    name: kafka_server_$1_$2_$3
+    type: COUNTER
+
+  # Quota specific rules
+  - pattern: kafka.server<type=(.+), user=(.+), client-id=(.+)><>([a-z-]+)
+    name: kafka_server_quota_$4
+    type: GAUGE
+    labels:
+      resource: "$1"
+      user: "$2"
+      clientId: "$3"
+
+  - pattern: kafka.server<type=(.+), client-id=(.+)><>([a-z-]+)
+    name: kafka_server_quota_$3
+    type: GAUGE
+    labels:
+      resource: "$1"
+      clientId: "$2"
+
+  - pattern: kafka.server<type=(.+), user=(.+)><>([a-z-]+)
+    name: kafka_server_quota_$3
+    type: GAUGE
+    labels:
+      resource: "$1"
+      user: "$2"
+
+  # Replica manager
+  - pattern: kafka.server<type=ReplicaManager, name=(.+)><>Value
+    name: kafka_server_replicamanager_$1
+    type: GAUGE
+
+  - pattern: kafka.server<type=ReplicaManager, name=(.+)><>(\w+)
+    name: kafka_server_replicamanager_$1_$2
+    type: COUNTER
+
+  # Controller
+  - pattern: kafka.controller<type=(.+), name=(.+)><>Value
+    name: kafka_controller_$1_$2
+    type: GAUGE
+
+  # Network
+  - pattern: kafka.network<type=(.+), name=(.+), request=(.+), (.+)=(.+)><>Value
+    name: kafka_network_$1_$2
+    type: GAUGE
+    labels:
+      request: "$3"
+      "$4": "$5"
+
+  - pattern: kafka.network<type=(.+), name=(.+), request=(.+)><>Value
+    name: kafka_network_$1_$2
+    type: GAUGE
+    labels:
+      request: "$3"
+
+  - pattern: kafka.network<type=(.+), name=(.+)><>Value
+    name: kafka_network_$1_$2
+    type: GAUGE
+
+  # Log
+  - pattern: kafka.log<type=(.+), name=(.+), topic=(.+), partition=(.+)><>Value
+    name: kafka_log_$1_$2
+    type: GAUGE
+    labels:
+      topic: "$3"
+      partition: "$4"
+
+  # JVM
+  - pattern: 'java.lang<type=GarbageCollector, name=(.+)><>CollectionCount'
+    name: jvm_gc_collection_count
+    type: COUNTER
+    labels:
+      gc: "$1"
+
+  - pattern: 'java.lang<type=GarbageCollector, name=(.+)><>CollectionTime'
+    name: jvm_gc_collection_time_ms
+    type: COUNTER
+    labels:
+      gc: "$1"
+
+  - pattern: 'java.lang<type=Memory><HeapMemoryUsage>(\w+)'
+    name: jvm_memory_heap_$1
+    type: GAUGE
+
+  - pattern: 'java.lang<type=Memory><NonHeapMemoryUsage>(\w+)'
+    name: jvm_memory_nonheap_$1
+    type: GAUGE
+
+  - pattern: 'java.lang<type=Threading><>(\w+ThreadCount)'
+    name: jvm_threading_$1
+    type: GAUGE
+
+  - pattern: 'java.lang<type=OperatingSystem><>(OpenFileDescriptorCount|MaxFileDescriptorCount)'
+    name: jvm_os_$1
+    type: GAUGE

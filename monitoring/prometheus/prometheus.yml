@@ -1,0 +1,47 @@
+global:
+  scrape_interval: 10s
+  scrape_timeout: 10s
+  evaluation_interval: 10s
+
+rule_files:
+  - "rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - timeout: "10s"
+      scheme: http
+      static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: kafka-controllers
+    scrape_interval: 10s
+    scrape_timeout: 10s
+    static_configs:
+      - targets:
+          - "kafka-controller-1:9301"
+          - "kafka-controller-2:9302"
+          - "kafka-controller-3:9303"
+
+  - job_name: kafka-brokers
+    scrape_interval: 10s
+    scrape_timeout: 10s
+    static_configs:
+      - targets:
+          - "kafka-broker-1:9401"
+          - "kafka-broker-2:9402"
+          - "kafka-broker-3:9403"
+
+  - job_name: elasticsearch
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ["elasticsearch:9200"]
+    metrics_path: /_prometheus/metrics
+
+  - job_name: spark
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ["spark-master:8080"]
+    metrics_path: /metrics/prometheus

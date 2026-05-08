@@ -1,0 +1,70 @@
+# ─── Java / JVM ───────────────────────────────────────
+*.jar
+*.class
+*.war
+*.ear
+*.nar
+
+# ─── JMX Exporter jar (download manually, see README) ─
+volumes/jmx_exporter/jmx_prometheus_javaagent.jar
+
+# ─── Spark runtime data ───────────────────────────────
+mnt/checkpoints/*
+mnt/spark-state/*
+!mnt/checkpoints/.gitkeep
+!mnt/spark-state/.gitkeep
+
+# ─── Python ───────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+.env
+
+# ─── Jupyter ──────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ─── Docker volumes / local data ──────────────────────
+volumes/kafka-data/
+volumes/es-data/
+volumes/grafana-data/
+
+# ─── OS ───────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+desktop.ini
+
+# ─── IDEs ─────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*.suo
+*.iml
+.project
+.classpath
+.settings/
+
+# ─── Logs ─────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Secrets / env files ──────────────────────────────
+.env
+.env.local
+.env.*.local
+secrets/

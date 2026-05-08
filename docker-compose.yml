@@ -1,0 +1,468 @@
+# =============================================================
+#  KafkaSparkArch — Full Streaming Stack
+#  Kafka (KRaft) · Spark · Elasticsearch · Prometheus · Grafana
+# =============================================================
+
+# Shared cluster ID — every Kafka node must use the same value.
+# To regenerate: docker run --rm apache/kafka:3.8.1 kafka-storage random-uuid
+x-kafka-cluster-id: &kafka-cluster-id "MkU3OEVBNTcwNTJENDM2Qk"
+
+# Common config inherited by all Spark services via YAML anchors.
+x-spark-common: &spark-common
+  image: spark:3.5.0
+  volumes:
+    - ./jobs:/opt/spark/jobs               # PySpark job scripts
+    - ./mnt/checkpoints:/mnt/spark-checkpoints  # Streaming checkpoints
+    - ./mnt/spark-state:/mnt/spark-state   # Stateful aggregation store
+  networks:
+    - kafkasparkarch-net
+
+# =============================================================
+#  SERVICES
+# =============================================================
+services:
+
+  # -------------------------------------------------------------
+  #  KAFKA CONTROLLERS (KRaft mode — no ZooKeeper needed)
+  #
+  #  3 controllers form a Raft quorum to elect a leader and manage
+  #  cluster metadata. They don't handle producer/consumer traffic.
+  #  JMX Exporter runs as a javaagent on each node so Prometheus
+  #  can scrape metrics over HTTP (ports 9301–9303).
+  # -------------------------------------------------------------
+  kafka-controller-1:
+    image: apache/kafka:3.8.1
+    container_name: kafka-controller-1
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: controller
+      KAFKA_LISTENERS: CONTROLLER://:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-controller-1:9093,2@kafka-controller-2:9093,3@kafka-controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CLUSTER_ID: *kafka-cluster-id
+      KAFKA_OPTS: >-
+        -javaagent:/usr/share/jmx_exporter/jmx_prometheus_javaagent.jar=9301:/usr/share/jmx_exporter/kafka-broker.yml
+    volumes:
+      - controller_data_1:/var/lib/kafka/data
+      - ./volumes/jmx_exporter:/usr/share/jmx_exporter/
+    networks:
+      - kafkasparkarch-net
+
+  kafka-controller-2:
+    image: apache/kafka:3.8.1
+    container_name: kafka-controller-2
+    environment:
+      KAFKA_NODE_ID: 2
+      KAFKA_PROCESS_ROLES: controller
+      KAFKA_LISTENERS: CONTROLLER://:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-controller-1:9093,2@kafka-controller-2:9093,3@kafka-controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CLUSTER_ID: *kafka-cluster-id
+      KAFKA_OPTS: >-
+        -javaagent:/usr/share/jmx_exporter/jmx_prometheus_javaagent.jar=9302:/usr/share/jmx_exporter/kafka-broker.yml
+    volumes:
+      - controller_data_2:/var/lib/kafka/data
+      - ./volumes/jmx_exporter:/usr/share/jmx_exporter/
+    networks:
+      - kafkasparkarch-net
+
+  kafka-controller-3:
+    image: apache/kafka:3.8.1
+    container_name: kafka-controller-3
+    environment:
+      KAFKA_NODE_ID: 3
+      KAFKA_PROCESS_ROLES: controller
+      KAFKA_LISTENERS: CONTROLLER://:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-controller-1:9093,2@kafka-controller-2:9093,3@kafka-controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CLUSTER_ID: *kafka-cluster-id
+      KAFKA_OPTS: >-
+        -javaagent:/usr/share/jmx_exporter/jmx_prometheus_javaagent.jar=9303:/usr/share/jmx_exporter/kafka-broker.yml
+    volumes:
+      - controller_data_3:/var/lib/kafka/data
+      - ./volumes/jmx_exporter:/usr/share/jmx_exporter/
+    networks:
+      - kafkasparkarch-net
+
+  # -------------------------------------------------------------
+  #  KAFKA BROKERS
+  #
+  #  Brokers handle all producer/consumer traffic.
+  #  Two listeners are configured per broker:
+  #    PLAINTEXT      → inter-container communication on port 9092
+  #    PLAINTEXT_HOST → host machine access on ports 29092/39092/49092
+  #
+  #  Spark and Schema Registry connect via PLAINTEXT (internal).
+  #  Use localhost:29092,39092,49092 from your dev machine.
+  # -------------------------------------------------------------
+  kafka-broker-1:
+    image: apache/kafka:3.8.1
+    container_name: kafka-broker-1
+    ports:
+      - "29092:29092"   # Host access to broker 1
+    environment:
+      KAFKA_NODE_ID: 4
+      KAFKA_PROCESS_ROLES: broker
+      KAFKA_LISTENERS: PLAINTEXT://:9092,PLAINTEXT_HOST://:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-broker-1:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-controller-1:9093,2@kafka-controller-2:9093,3@kafka-controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CLUSTER_ID: *kafka-cluster-id
+      KAFKA_OPTS: >-
+        -javaagent:/usr/share/jmx_exporter/jmx_prometheus_javaagent.jar=9401:/usr/share/jmx_exporter/kafka-broker.yml
+    depends_on:
+      - kafka-controller-1
+      - kafka-controller-2
+      - kafka-controller-3
+    volumes:
+      - broker_data_1:/var/lib/kafka/data
+      - ./volumes/jmx_exporter:/usr/share/jmx_exporter/
+    networks:
+      - kafkasparkarch-net
+
+  kafka-broker-2:
+    image: apache/kafka:3.8.1
+    container_name: kafka-broker-2
+    ports:
+      - "39092:39092"   # Host access to broker 2
+    environment:
+      KAFKA_NODE_ID: 5
+      KAFKA_PROCESS_ROLES: broker
+      KAFKA_LISTENERS: PLAINTEXT://:9092,PLAINTEXT_HOST://:39092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-broker-2:9092,PLAINTEXT_HOST://localhost:39092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-controller-1:9093,2@kafka-controller-2:9093,3@kafka-controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CLUSTER_ID: *kafka-cluster-id
+      KAFKA_OPTS: >-
+        -javaagent:/usr/share/jmx_exporter/jmx_prometheus_javaagent.jar=9402:/usr/share/jmx_exporter/kafka-broker.yml
+    depends_on:
+      - kafka-controller-1
+      - kafka-controller-2
+      - kafka-controller-3
+    volumes:
+      - broker_data_2:/var/lib/kafka/data
+      - ./volumes/jmx_exporter:/usr/share/jmx_exporter/
+    networks:
+      - kafkasparkarch-net
+
+  kafka-broker-3:
+    image: apache/kafka:3.8.1
+    container_name: kafka-broker-3
+    ports:
+      - "49092:49092"   # Host access to broker 3
+    environment:
+      KAFKA_NODE_ID: 6
+      KAFKA_PROCESS_ROLES: broker
+      KAFKA_LISTENERS: PLAINTEXT://:9092,PLAINTEXT_HOST://:49092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-broker-3:9092,PLAINTEXT_HOST://localhost:49092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-controller-1:9093,2@kafka-controller-2:9093,3@kafka-controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CLUSTER_ID: *kafka-cluster-id
+      KAFKA_OPTS: >-
+        -javaagent:/usr/share/jmx_exporter/jmx_prometheus_javaagent.jar=9403:/usr/share/jmx_exporter/kafka-broker.yml
+    depends_on:
+      - kafka-controller-1
+      - kafka-controller-2
+      - kafka-controller-3
+    volumes:
+      - broker_data_3:/var/lib/kafka/data
+      - ./volumes/jmx_exporter:/usr/share/jmx_exporter/
+    networks:
+      - kafkasparkarch-net
+
+  # -------------------------------------------------------------
+  #  SCHEMA REGISTRY
+  #
+  #  Centralized store for Avro/Protobuf/JSON schemas.
+  #  Producers and consumers use it to serialize/deserialize
+  #  messages without embedding the schema in every record.
+  #  Healthcheck ensures downstream services (Redpanda Console)
+  #  wait until the registry is fully ready before connecting.
+  # -------------------------------------------------------------
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.5.1
+    container_name: schema-registry
+    ports:
+      - "18081:8081"    # Exposed on 18081 to avoid conflicts with other local services
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka-broker-1:9092,kafka-broker-2:9092,kafka-broker-3:9092
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+    depends_on:
+      - kafka-broker-1
+      - kafka-broker-2
+      - kafka-broker-3
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/subjects || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - kafkasparkarch-net
+
+  # -------------------------------------------------------------
+  #  REDPANDA CONSOLE  (Kafka UI)
+  #
+  #  Web UI to browse topics, consumer groups, schemas, and
+  #  produce/consume messages manually. Waits for schema-registry
+  #  to pass its healthcheck before starting to avoid a fatal
+  #  "connection refused" crash on boot.
+  # -------------------------------------------------------------
+  console:
+    image: docker.redpanda.com/redpandadata/console:v2.5.2
+    container_name: kafkasparkarch-console-1
+    entrypoint: /bin/sh
+    command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml && /app/console'
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      CONSOLE_CONFIG_FILE: >
+        kafka:
+          brokers: ["kafka-broker-1:9092","kafka-broker-2:9092","kafka-broker-3:9092"]
+          schemaRegistry:
+            enabled: true
+            urls: ["http://schema-registry:8081"]
+        redpanda:
+          adminApi:
+            enabled: false
+            urls: ["http://kafka-broker-1:9644"]
+        connect:
+          enabled: false
+          clusters:
+            - name: local-connect-cluster
+              url: http://connect:8083
+    ports:
+      - "8085:8080"     # Avoids conflict with Spark Master UI on 8080
+    depends_on:
+      kafka-broker-1:
+        condition: service_started
+      kafka-broker-2:
+        condition: service_started
+      kafka-broker-3:
+        condition: service_started
+      schema-registry:
+        condition: service_healthy   # Must be healthy, not just started
+    networks:
+      - kafkasparkarch-net
+
+  # -------------------------------------------------------------
+  #  APACHE SPARK
+  #
+  #  1 Master + 3 Workers. Jobs are submitted via spark-submit
+  #  targeting spark://spark-master:7077.
+  #  Each worker gets 1 core and 1g RAM — tune as needed.
+  #  Job scripts live in ./jobs/ (mounted at /opt/spark/jobs/).
+  # -------------------------------------------------------------
+  spark-master:
+    <<: *spark-common
+    container_name: spark-master
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    environment:
+      SPARK_NO_DAEMONIZE: "true"
+    ports:
+      - "9190:8080"   # Spark Master Web UI
+      - "4040:4040"   # Running application UI
+      - "7077:7077"   # spark-submit endpoint
+
+  spark-worker-1:
+    <<: *spark-common
+    container_name: spark-worker-1
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    depends_on:
+      - spark-master
+    environment:
+      SPARK_NO_DAEMONIZE: "true"
+      SPARK_WORKER_CORES: 1
+      SPARK_WORKER_MEMORY: 1g
+
+  spark-worker-2:
+    <<: *spark-common
+    container_name: spark-worker-2
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    depends_on:
+      - spark-master
+    environment:
+      SPARK_NO_DAEMONIZE: "true"
+      SPARK_WORKER_CORES: 1
+      SPARK_WORKER_MEMORY: 1g
+
+  spark-worker-3:
+    <<: *spark-common
+    container_name: spark-worker-3
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    depends_on:
+      - spark-master
+    environment:
+      SPARK_NO_DAEMONIZE: "true"
+      SPARK_WORKER_CORES: 1
+      SPARK_WORKER_MEMORY: 1g
+
+  # -------------------------------------------------------------
+  #  ELASTICSEARCH
+  #
+  #  Single-node setup for local development.
+  #  Security (xpack) is disabled for simplicity — enable it in prod.
+  #  Port 9300 (transport layer) is intentionally not exposed on
+  #  the host to avoid clashing with Kafka JMX port range.
+  # -------------------------------------------------------------
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - bootstrap.memory_lock=true
+      - cluster.name=kafka-spark-cluster
+      - node.name=es-node-1
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - kafkasparkarch-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # -------------------------------------------------------------
+  #  KIBANA
+  #
+  #  Visualization layer for Elasticsearch. Waits for ES to be
+  #  healthy before starting to avoid repeated connection errors.
+  # -------------------------------------------------------------
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
+      XPACK_SECURITY_ENABLED: "false"
+      SERVER_NAME: kibana
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - kafkasparkarch-net
+
+  # -------------------------------------------------------------
+  #  PROMETHEUS
+  #
+  #  Scrapes metrics from Kafka brokers and controllers via the
+  #  JMX Exporter HTTP endpoints. Config and alert rules live
+  #  in ./monitoring/prometheus/.
+  # -------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v3.0.0
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.enable-lifecycle'
+    depends_on:
+      - kafka-broker-1
+      - kafka-broker-2
+      - kafka-broker-3
+    networks:
+      - kafkasparkarch-net
+
+  # -------------------------------------------------------------
+  #  ALERTMANAGER
+  #
+  #  Receives alerts from Prometheus and routes them to configured
+  #  receivers (email, Slack, PagerDuty, etc.).
+  #  Edit ./monitoring/alertmanager/alertmanager.yml to add routes.
+  # -------------------------------------------------------------
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager:/etc/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+    networks:
+      - kafkasparkarch-net
+
+  # -------------------------------------------------------------
+  #  GRAFANA
+  #
+  #  Dashboard UI connected to Prometheus. The Prometheus datasource
+  #  is auto-provisioned on startup via ./monitoring/grafana/.
+  #  Anonymous access is enabled for convenience in local dev.
+  #  Default login: admin / admin
+  # -------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - kafkasparkarch-net
+
+# =============================================================
+#  NETWORKS
+# =============================================================
+networks:
+  kafkasparkarch-net:
+    driver: bridge
+
+# =============================================================
+#  VOLUMES
+#  Named volumes managed by Docker — data persists across restarts.
+#  Run `docker compose down -v` to wipe everything for a clean slate.
+# =============================================================
+volumes:
+  controller_data_1:
+  controller_data_2:
+  controller_data_3:
+  broker_data_1:
+  broker_data_2:
+  broker_data_3:
+  es_data:
+  grafana_data:
