@@ -46,15 +46,15 @@ Metrics captured from Spark UI (`localhost:4040`) during a live run:
 | Scheduling Mode | FIFO |
 
 ### Spark Jobs Timeline
-![Spark Jobs](Imgs/spark_jobs_active.png)
-![Spark Jobs — Completed](Imgs/spark_jobs_completed.png)
+![Spark Jobs](./Imgs/spark_jobs_active.png)
+
+![Spark Jobs — Completed](./Imgs/spark_jobs_completed.png)
 
 ### Streaming Query Stats — Aggregates
-![Aggregates Query](Imgs/aggregates_query.png)
+![Aggregates Query](./Imgs/aggregates_query.png)
 
 ### Streaming Query Stats — Anomalies
-![Anomalies Query](Imgs/anomalies_query.png)
-
+![Anomalies Query](./Imgs/anomalies_query.png)
 ---
 
 ## Prerequisites
