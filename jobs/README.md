@@ -86,8 +86,9 @@ docker compose ps   # all services should show "Up"
 
 ### 3. Submit the Spark job
 ```bash
-docker exec spark-master spark-submit \
+docker exec -it spark-master /opt/spark/bin/spark-submit \
   --master spark://spark-master:7077 \
+  --conf spark.jars.ivy=/tmp/ivy \
   --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 \
   /opt/spark/jobs/spark_processor.py
 ```
