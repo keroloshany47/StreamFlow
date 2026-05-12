@@ -1,3 +1,4 @@
+![test](./Imgs/spark_jobs_active.png)
 #  Spark Streaming Jobs — KafkaSparkArch
 
 Real-time financial transaction processing using Apache Spark Structured Streaming. This layer sits between the Kafka brokers and downstream consumers, handling windowed aggregations and anomaly detection at high throughput.
@@ -46,23 +47,18 @@ Metrics captured from Spark UI (`localhost:4040`) during a live run:
 | Scheduling Mode | FIFO |
 
 ### Spark Jobs Timeline
+
 ![Spark Jobs](./Imgs/spark_jobs_active.png)
 
 ![Spark Jobs — Completed](./Imgs/spark_jobs_completed.png)
 
 ### Streaming Query Stats — Aggregates
+
 ![Aggregates Query](./Imgs/aggregates_query.png)
 
 ### Streaming Query Stats — Anomalies
-![Anomalies Query](./Imgs/anomalies_query.png)
-![Spark Jobs](./Imgs/spark_jobs_active.png)
-![Spark Jobs Completed](./Imgs/spark_jobs_completed.png)
 
-### Aggregates
-![Aggregates](./Imgs/aggregates_query.png)
-
-### Anomalies
-![Anomalies](./Imgs/anomalies_query.png)
+![Anomalies Query](./Imgs/anomalies_query.png) 
 ---
 
 ## Prerequisites
