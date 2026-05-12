@@ -1,9 +1,14 @@
-# ─── Java / JVM ───────────────────────────────────────
-*.jar
+# ─── Gradle ───────────────────────────────────────────
+.gradle/
+build/
+gradlew
+gradlew.bat
+gradle/
+
+# ─── Java ─────────────────────────────────────────────
 *.class
+*.jar
 *.war
-*.ear
-*.nar
 
 # ─── JMX Exporter jar (download manually, see README) ─
 volumes/jmx_exporter/jmx_prometheus_javaagent.jar
@@ -14,7 +19,11 @@ mnt/spark-state/*
 !mnt/checkpoints/.gitkeep
 !mnt/spark-state/.gitkeep
 
-# ─── Python ───────────────────────────────────────────
+# ─── Python virtualenv ────────────────────────────────
+StreamFlow/
+.venv/
+venv/
+env/
 __pycache__/
 *.py[cod]
 *.pyo
@@ -23,12 +32,7 @@ __pycache__/
 *.egg
 *.egg-info/
 dist/
-build/
 .eggs/
-.venv/
-venv/
-env/
-.env
 
 # ─── Jupyter ──────────────────────────────────────────
 .ipynb_checkpoints/
