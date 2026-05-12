@@ -55,6 +55,14 @@ Metrics captured from Spark UI (`localhost:4040`) during a live run:
 
 ### Streaming Query Stats — Anomalies
 ![Anomalies Query](./Imgs/anomalies_query.png)
+![Spark Jobs](./Imgs/spark_jobs_active.png)
+![Spark Jobs Completed](./Imgs/spark_jobs_completed.png)
+
+### Aggregates
+![Aggregates](./Imgs/aggregates_query.png)
+
+### Anomalies
+![Anomalies](./Imgs/anomalies_query.png)
 ---
 
 ## Prerequisites
