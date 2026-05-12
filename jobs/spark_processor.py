@@ -22,7 +22,7 @@ spark = (
     .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0")
     .config("spark.sql.streaming.checkpointLocation", CHECKPOINT_DIR)
     .config("spark.sql.streaming.stateStore.stateStoreDir", STATES_DIR)
-    .config("spark.sql.shuffle.partitions", 4)  # 200
+    .config("spark.sql.shuffle.partitions", 200)  # 200
     .getOrCreate()
 )
 
@@ -52,7 +52,8 @@ kafka_stream = (
     .format("kafka")
     .option("kafka.bootstrap.servers", KAFKA_BROKERS)
     .option("subscribe", SOURCE_TOPIC)
-    .option("startingOffsets", "latest")  # production-safe
+    .option("startingOffsets", "earliest")
+    .option("failOnDataLoss", "false")# production-safe
     .load()
 )
 

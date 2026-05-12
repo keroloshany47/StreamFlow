@@ -1,0 +1,37 @@
+# JMX Exporter config for Apache Spark Master
+# Place this file at: ./volumes/jmx_exporter/spark.yml
+# (same folder as jmx_prometheus_javaagent.jar and kafka-broker.yml)
+
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+
+rules:
+  # Spark Master metrics
+  - pattern: "metrics<name=(.+)><>Value"
+    name: spark_$1
+    type: GAUGE
+
+  # JVM memory
+  - pattern: "java.lang<type=Memory><HeapMemoryUsage>used"
+    name: spark_jvm_heap_used_bytes
+    type: GAUGE
+
+  - pattern: "java.lang<type=Memory><NonHeapMemoryUsage>used"
+    name: spark_jvm_nonheap_used_bytes
+    type: GAUGE
+
+  # JVM GC
+  - pattern: "java.lang<type=GarbageCollector, name=(.+)><>CollectionCount"
+    name: spark_jvm_gc_collection_count
+    labels:
+      gc: "$1"
+    type: COUNTER
+
+  - pattern: "java.lang<type=GarbageCollector, name=(.+)><>CollectionTime"
+    name: spark_jvm_gc_collection_time_ms
+    labels:
+      gc: "$1"
+    type: COUNTER
+
+  # Catch-all — expose everything else as-is
+  - pattern: ".*"
