@@ -1,4 +1,3 @@
-![test](./Imgs/spark_jobs_active.png)
 #  Spark Streaming Jobs — KafkaSparkArch
 
 Real-time financial transaction processing using Apache Spark Structured Streaming. This layer sits between the Kafka brokers and downstream consumers, handling windowed aggregations and anomaly detection at high throughput.
