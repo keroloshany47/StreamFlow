@@ -1,11 +1,5 @@
 # Kafka Transaction Event — Storage Capacity Planning
 
-**Document Type:** Storage Estimation & Capacity Planning
-**Scope:** Storage Footprint Only — Compression, Replication, 5-Year Forecast
-**System:** Apache Kafka — Financial Transaction Streaming Pipeline
-**Version:** 2.2 — Monte Carlo Validated
-**Last Updated:** May 2026
-
 > **Scope Notice:** This document focuses exclusively on **storage footprint estimation**.
 > It does NOT cover cluster sizing, throughput limits, broker configuration, or system architecture.
 
@@ -285,7 +279,3 @@ The expected scenario assumes a stable 5x compression ratio and the Monte Carlo-
 | Timestamp | Live `int(time.time())` — 10-digit Unix epoch |
 
 *All storage figures assume sustained 24/7 operation at the stated throughput with the configuration parameters defined in Section 1. Monte Carlo results are stable at ±0.1 bytes with n ≥ 100,000.*
-
----
-
-*v2.2 — Precision fixes: effective average compression wording, data entropy note, corrected Conservative scenario bytes, replaced monospace bar chart with GitHub-compatible table.*
