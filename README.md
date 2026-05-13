@@ -46,7 +46,7 @@ Along the way, I also wanted to validate real capacity planning numbers: how muc
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        DATA PRODUCERS                           │
-│   Java Producer (high throughput)  │  Python Producer (anomalies)│
+│   Java Producer (high throughput)  │ Python Producer (anomalies)│
 └───────────────────┬────────────────┴────────────────────────────┘
                     │  financial_transactions (16 partitions, RF=3)
                     ▼
@@ -160,7 +160,7 @@ curl http://localhost:9200/_cluster/health?pretty
 ### 6. Run the Java producer (high throughput)
 
 ```bash
-./gradlew run
+./gradlew run 
 ```
 
 ### 7. Run the Python producer (anomaly traffic)
@@ -201,7 +201,7 @@ StreamFlow/
 ├── requirements.txt                # Python dependencies
 │
 ├── docs/ 
-│   ├──Storage.md                      # Kafka storage capacity planning (Monte Carlo)
+│   └──Storage.md                      # Kafka storage capacity planning (Monte Carlo)
 │
 ├── src/                            # Java producer
 │   ├── main/java/com/datamasterylab/
@@ -255,6 +255,7 @@ StreamFlow/
 | Spark Streaming Job | [jobs/README.md](jobs/README.md) |
 | Monitoring & Observability | [monitoring/README.md](monitoring/README.md) |
 | Storage Capacity Planning | [Storage Capacity Planning](docs/storage-capacity.md) |
+| volumes/jmx_exporter| [volumes/jmx_exporter](volumes/jmx_exporter/README.md) |
 
 ---
 
