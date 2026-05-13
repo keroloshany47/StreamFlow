@@ -2,7 +2,7 @@
 
 > A production-grade, fully containerized real-time financial transaction streaming pipeline — built to simulate, process, detect anomalies, store, and monitor high-throughput event data at scale.
 
-![StreamFlow Architecture](Imgs/streamflow_drawio.png)
+![StreamFlow Architecture](Imgs/streamflow.drawio.png)
 
 ---
 
